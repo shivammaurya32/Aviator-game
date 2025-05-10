@@ -1,0 +1,218 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aviator Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      text-align: center;
+      padding: 40px;
+      margin: 0;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 36px;
+      color: #f5f5f5;
+    }
+
+    #balance {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #cfcfcf;
+    }
+
+    #controls {
+      margin: 20px auto;
+      font-size: 18px;
+    }
+
+    input[type="number"] {
+      padding: 10px;
+      font-size: 16px;
+      width: 100px;
+      border-radius: 5px;
+      border: none;
+      margin: 0 10px;
+      background: #222;
+      color: #fff;
+    }
+
+    #gameArea {
+      position: relative;
+      height: 100px;
+      width: 100%;
+      margin: 30px auto 10px;
+      overflow: hidden;
+      border-bottom: 2px dashed #555;
+    }
+
+    #plane {
+      position: absolute;
+      left: 0;
+      top: 20px;
+      font-size: 40px;
+      transition: transform 0.1s linear;
+    }
+
+    #multiplier {
+      font-size: 64px;
+      font-weight: bold;
+      color: #00ff99;
+      text-shadow: 0 0 10px #00ff99;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      margin: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    #startBtn {
+      background: linear-gradient(45deg, #28a745, #218838);
+      color: white;
+    }
+
+    #cashOutBtn {
+      background: linear-gradient(45deg, #ff9800, #e65100);
+      color: white;
+      display: none;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    #message {
+      margin-top: 20px;
+      font-size: 22px;
+    }
+
+    #history {
+      margin-top: 30px;
+      font-size: 16px;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aviator Game</h1>
+  <div id="balance">Balance: $1000</div>
+
+  <div id="controls">
+    Bet: $<input type="number" id="betAmount" value="10" min="1" />
+    Auto Cash Out at: <input type="number" id="autoCashOut" value="2.00" step="0.01" min="1.01" />
+  </div>
+
+  <div id="gameArea">
+    <div id="plane">✈️</div>
+  </div>
+
+  <div id="multiplier">1.00x</div>
+  <button id="startBtn">Start Game</button>
+  <button id="cashOutBtn">Cash Out</button>
+  <div id="message"></div>
+  <div id="history">Crash History: </div>
+
+  <script>
+    let multiplier = 1.00;
+    let crashPoint = 0;
+    let interval = null;
+    let gameActive = false;
+    let balance = 1000;
+    const historyList = [];
+
+    const multiplierDisplay = document.getElementById("multiplier");
+    const startBtn = document.getElementById("startBtn");
+    const cashOutBtn = document.getElementById("cashOutBtn");
+    const message = document.getElementById("message");
+    const betInput = document.getElementById("betAmount");
+    const autoCashInput = document.getElementById("autoCashOut");
+    const balanceDisplay = document.getElementById("balance");
+    const historyDisplay = document.getElementById("history");
+    const plane = document.getElementById("plane");
+
+    startBtn.onclick = () => {
+      const bet = parseFloat(betInput.value);
+      if (bet > balance || bet <= 0) {
+        alert("Invalid bet amount.");
+        return;
+      }
+
+      resetGame(bet);
+      startGame(bet);
+    };
+
+    cashOutBtn.onclick = () => {
+      cashOut();
+    };
+
+    function resetGame(bet) {
+      multiplier = 1.00;
+      crashPoint = (Math.random() * 10 + 1).toFixed(2);
+      gameActive = true;
+      message.textContent = "";
+      multiplierDisplay.textContent = multiplier.toFixed(2) + "x";
+      startBtn.disabled = true;
+      cashOutBtn.style.display = "inline-block";
+      balance -= bet;
+      updateBalance();
+      plane.style.transform = "translateX(0%)";
+    }
+
+    function startGame(bet) {
+      interval = setInterval(() => {
+        multiplier += 0.05;
+        multiplierDisplay.textContent = multiplier.toFixed(2) + "x";
+
+        // Move plane with multiplier
+        const planePos = Math.min(multiplier * 10, 100);
+        plane.style.transform = `translateX(${planePos}%)`;
+
+        // Auto cash out
+        const autoCashOutValue = parseFloat(autoCashInput.value);
+        if (multiplier >= autoCashOutValue) {
+          cashOut();
+        }
+
+        if (multiplier >= crashPoint) {
+          endGame("💥 Crashed at " + multiplier.toFixed(2) + "x! You lose.");
+        }
+      }, 100);
+    }
+
+    function cashOut() {
+      if (!gameActive) return;
+      const bet = parseFloat(betInput.value);
+      const winAmount = bet * multiplier;
+      balance += winAmount;
+      updateBalance();
+      endGame("💰 You cashed out at " + multiplier.toFixed(2) + "x! You won $" + winAmount.toFixed(2));
+    }
+
+    function endGame(result) {
+      clearInterval(interval);
+      gameActive = false;
+      cashOutBtn.style.display = "none";
+      startBtn.disabled = false;
+      message.textContent = result;
+      historyList.unshift(multiplier.toFixed(2));
+      if (historyList.length > 10) historyList.pop();
+      historyDisplay.textContent = "Crash History: " + historyList.join(", ");
+    }
+
+    function updateBalance() {
+      balanceDisplay.textContent = "Balance: $" + balance.toFixed(2);
+    }
+  </script>
+</body>
+</html>
